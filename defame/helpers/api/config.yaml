@@ -1,0 +1,9 @@
+host: 0.0.0.0
+port: 3003
+api_key: defame-local-key
+save_dir: out/api/
+fact_checker:
+  max_iterations: 3
+  llm: groq_gpt_oss
+  interpret: false
+  decompose: false

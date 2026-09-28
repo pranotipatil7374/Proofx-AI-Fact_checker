@@ -1,0 +1,28 @@
+﻿venv/
+.venv/
+__pycache__/
+*.pyc
+node_modules/
+.env
+.env.*
+!.env.example
+*.log
+.vscode/
+.idea/
+dist/
+build/
+config/api_keys.yaml
+
+# Secrets
+config/api_keys.yaml
+config/google_service_account_key.json
+
+# Generated output
+out/
+temp/
+*.db
+*.db-shm
+*.db-wal
+
+# Generated test output
+test_experiment/
