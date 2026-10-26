@@ -1,4 +1,5 @@
 import csv
+import io
 import json
 import logging
 import os.path
@@ -73,7 +74,7 @@ class Logger:
         # Initialize the general logger for standard logs
         self.logger = logging.getLogger('mafc')
         self.logger.propagate = False  # Disable propagation to avoid duplicate logs
-        stdout_handler = logging.StreamHandler(sys.stdout)
+        stdout_handler = logging.StreamHandler(_make_utf8_stdout())
         stdout_handler.setLevel(LOG_LEVELS[self.print_log_level])
         self.logger.addHandler(stdout_handler)
         self.logger.setLevel(logging.DEBUG)
@@ -327,6 +328,23 @@ class RemoveStringFormattingFormatter(logging.Formatter):
         return remove_string_formatters(msg)
 
 
+def _make_utf8_stdout():
+    stdout = sys.stdout
+    if hasattr(stdout, "buffer"):
+        encoding = getattr(stdout, "encoding", None)
+        if encoding:
+            try:
+                "\u202f".encode(encoding)
+                return stdout
+            except UnicodeEncodeError:
+                pass
+        try:
+            return io.TextIOWrapper(stdout.buffer, encoding="utf-8", errors="replace", write_through=True)
+        except (AttributeError, ValueError):
+            pass
+    return stdout
+
+
 def _determine_target_dir(benchmark_name: str = "testing",
                           procedure_name: str = None,
                           model_name: str = None,
@@ -361,7 +379,11 @@ def _determine_target_dir(benchmark_name: str = "testing",
 def _make_file_handler(path: Path) -> logging.FileHandler:
     """Sets up a stream that writes all logs with level DEBUG or higher into a dedicated
     TXT file. It automatically removes any string formatting."""
-    file_handler = RotatingFileHandler(path, maxBytes=10 * 1024 * 1024, backupCount=5)
+    file_handler = RotatingFileHandler(path,
+                                      maxBytes=10 * 1024 * 1024,
+                                      backupCount=5,
+                                      encoding="utf-8",
+                                      errors="replace")
     file_handler.setLevel(logging.DEBUG)
     formatter = RemoveStringFormattingFormatter()
     file_handler.setFormatter(formatter)

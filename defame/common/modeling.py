@@ -1,5 +1,6 @@
 import copy
 import re
+import time
 from abc import ABC
 from datetime import datetime
 from typing import Callable
@@ -276,10 +277,20 @@ class Model(ABC):
         if prompt.has_audios() and not self.accepts_audio:
             logger.warning(f"Prompt contains audios which cannot be processed by {self.name}! Ignoring them...")
 
+        def response_is_empty(value):
+            if value is None:
+                return True
+            if isinstance(value, str):
+                return value.strip() == ""
+            if isinstance(value, dict):
+                verdict = value.get("verdict")
+                return verdict is None or (isinstance(verdict, str) and verdict.strip() == "")
+            return False
+
         # Try to get a response, repeat if not successful
         response, n_attempts = "", 0
         system_prompt = self.system_prompt
-        while not response and n_attempts < max_attempts:
+        while response_is_empty(response) and n_attempts < max_attempts:
             # Less capable LLMs sometimes need a reminder for the correct formatting. Add it here:
             if n_attempts > 0 and prompt.retry_instruction is not None:
                 prompt.data.append(f"\n{prompt.retry_instruction}")
@@ -338,6 +349,11 @@ class Model(ABC):
                 logger.warning("Unable to extract contents from response:\n" + original_response)
                 logger.warning(repr(e))
                 response = None
+
+            if response_is_empty(response) and n_attempts < max_attempts:
+                wait_seconds = min(30, 2 ** (n_attempts - 1))
+                logger.warning(f"LLM request failed, retrying in {wait_seconds}s (attempt {n_attempts}/{max_attempts}).")
+                time.sleep(wait_seconds)
 
         if response is None:
             logger.error("Failed to generate a valid response for prompt:\n" + str(prompt))
@@ -420,7 +436,7 @@ class OpenRouterModel(GPTModel):
 
     def generate(self, prompt: Prompt | str, temperature: float = None, top_p=None,
                  top_k=None, max_attempts: int = 1) -> dict | str | None:
-        return super().generate(prompt, temperature, top_p, top_k, max_attempts=1)
+        return super().generate(prompt, temperature, top_p, top_k, max_attempts=max_attempts)
 
 
 class GroqModel(GPTModel):
@@ -432,7 +448,7 @@ class GroqModel(GPTModel):
 
     def generate(self, prompt: Prompt | str, temperature: float = None, top_p=None,
                  top_k=None, max_attempts: int = 1) -> dict | str | None:
-        return super().generate(prompt, temperature, top_p, top_k, max_attempts=1)
+        return super().generate(prompt, temperature, top_p, top_k, max_attempts=max_attempts)
 
 
 class DeepSeekModel(Model):

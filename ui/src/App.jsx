@@ -16,7 +16,7 @@ import {
   X,
 } from 'lucide-react'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:3003'
+const API_URL = import.meta.env.VITE_API_URL || ''
 const LOCAL_API_KEY = 'defame-local-key'
 const POLL_MS = 1600
 const JOB_TIMEOUT_MS = 90000
@@ -39,17 +39,10 @@ function App() {
 
   useEffect(() => {
     if (!job?.job_id || ['DONE', 'FAILED'].includes(job.status)) return undefined
-    if (jobStartedAt && Date.now() - jobStartedAt > JOB_TIMEOUT_MS) {
-      setError('The backend is taking longer than 90 seconds. Check the API terminal for provider or worker errors.')
-      setIsSubmitting(false)
-      return undefined
-    }
     const timer = window.setInterval(async () => {
       try {
         if (jobStartedAt && Date.now() - jobStartedAt > JOB_TIMEOUT_MS) {
-          setError('The backend is taking longer than 90 seconds. Check the API terminal for provider or worker errors.')
-          setIsSubmitting(false)
-          return
+          setError((current) => current || 'The investigation is taking longer than expected. Still checking for results...')
         }
         const response = await fetch(`${API_URL}/results/${job.job_id}`)
         if (!response.ok) throw new Error(`Status request failed (${response.status})`)
@@ -58,6 +51,7 @@ function App() {
         if (data.job_info.status === 'DONE' || data.job_info.status === 'FAILED') {
           setResult(data)
           setIsSubmitting(false)
+          setError('')
         }
       } catch (requestError) {
         setError(requestError.message)
@@ -134,7 +128,7 @@ function App() {
       <header className="topbar">
         <a className="brand" href="/" aria-label="DEFAME home">
           <span className="brand-mark"><Radar size={18} strokeWidth={2.5} /></span>
-          <span>DEFAME<span className="brand-slash">/</span>DESK</span>
+          <span>ProofX-AI<span className="brand-slash"></span></span>
         </a>
         <div className="topbar-meta"><span className="status-dot" /> Evidence intelligence <span className="topbar-divider" /> API connected</div>
       </header>

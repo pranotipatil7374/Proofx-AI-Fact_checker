@@ -22,8 +22,9 @@ class Judge:
         self.llm = llm
         self.classes = set(classes)
 
-        if Label.NEI not in class_definitions:
-            class_definitions[Label.NEI] = DEFAULT_LABEL_DEFINITIONS[Label.NEI]
+        class_definitions = dict(class_definitions or {})
+        for label in self.classes:
+            class_definitions.setdefault(label, DEFAULT_LABEL_DEFINITIONS.get(label, label.value))
         self.class_definitions = class_definitions
 
         self.extra_rules = extra_rules
@@ -56,11 +57,15 @@ class Judge:
             parsed = prompt.extract(response)
             if isinstance(parsed, dict):
                 response = parsed
+            elif isinstance(parsed, Label):
+                response = {"verdict": parsed}
             else:
                 response = {"verdict": None, "response": response}
+        elif isinstance(response, Label):
+            response = {"verdict": response}
 
         if response is None or not isinstance(response, dict) or not response.get("verdict"):
-            logger.warning(f"Error while generating verdict. Defaulting to REFUSED.")
+            logger.warning("Error while generating verdict. Defaulting to REFUSED.")
             self.latest_reasoning = response.get("response", "") if isinstance(response, dict) else ""
             return Label.REFUSED_TO_ANSWER
 
